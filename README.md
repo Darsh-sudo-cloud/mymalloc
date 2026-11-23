@@ -1,44 +1,77 @@
 # mymalloc
 
-My own version of `malloc` and `free` in C. I built it to figure out how memory allocation actually works under the hood.
+A dynamic memory allocator written in C from scratch. It provides `my_malloc` and `my_free` over a fixed 64 KB heap, with first-fit allocation, block splitting, coalescing of adjacent free blocks, and 8-byte alignment.
 
-## What it does
+![Stress test output](images/stress-test.png)
 
-- Gives out memory from a fixed 64 KB heap
-- Splits big free chunks so small requests don't waste space
-- Merges neighboring free chunks when you free something, so the heap doesn't get chopped up
-- Rounds every allocation up to 8 bytes
-- Has a stress test that does 10,000 random allocs and frees and checks nothing got overwritten
+## Overview
 
-## How it works
+Each block in the heap begins with a header that records the payload size and a free flag. Blocks are stored back to back, so the allocator can traverse the heap by advancing past each header and its payload.
 
-Every block starts with a small header that stores its size and whether it's free. `my_malloc` walks through the blocks from the start and takes the first free one that's big enough. If it's much bigger than needed, it cuts it in two. `my_free` marks the block free and then merges it with any free blocks right next to it.
+```
+ Heap (64 KB static array)
+ ┌────────┬───────────┬────────┬───────────┬────────┬─────────────┐
+ │ header │  payload  │ header │  payload  │ header │   payload   │ ...
+ └────────┴───────────┴────────┴───────────┴────────┴─────────────┘
 
-## Running it
+ my_malloc(n)                       my_free(ptr)
+   1. Scan blocks from the start      1. Locate the header (ptr - header size)
+   2. Select the first free fit       2. Mark the block free
+   3. Split if the remainder fits     3. Coalesce with adjacent free blocks
+   4. Return pointer past header
+```
 
-With gcc (I used MSYS2 on Windows):
+## Features
 
-    gcc main.c mymalloc.c -o malloc_test.exe
-    ./malloc_test.exe
+- **First-fit allocation** from a static 64 KB heap
+- **Block splitting** to avoid assigning oversized blocks to small requests
+- **Coalescing** of adjacent free blocks to reduce external fragmentation
+- **8-byte alignment** for all returned pointers
 
-    gcc stress.c mymalloc.c -o stress_test.exe
-    ./stress_test.exe
+## Components
 
-The stress test uses a fixed seed, so if it ever fails, you can run it again and get the same failure.
+| Component | Implementation | Responsibility |
+|-----------|----------------|----------------|
+| Heap | Static `unsigned char` array of 64 KB | Stores all blocks; no OS interaction |
+| Block header | `block_header` struct (`size`, `is_free`) | Describes each block and locates the next one |
+| `my_malloc` | First-fit scan with split | Allocates a block and returns a usable pointer |
+| `my_free` | Mark free, then `coalesce()` | Releases a block and merges free neighbors |
+| `coalesce` | Linear pass over the heap | Combines adjacent free blocks |
+| Stress test | `stress.c`, fixed random seed | Validates correctness under 10,000 random operations |
+
+## Build and run
+
+Requires `gcc`. Tested with MSYS2 (UCRT64) on Windows.
+
+```bash
+# Demonstration
+gcc main.c mymalloc.c -o malloc_test
+./malloc_test
+
+# Stress test
+gcc stress.c mymalloc.c -o stress_test
+./stress_test
+```
+
+## Testing
+
+The stress test maintains 50 slots. Each round either allocates a random-sized block and fills it with a slot-specific byte, or verifies that block's contents and frees it. Any mismatch is reported as corruption. After all operations, the test allocates 60 KB to confirm that freed memory was coalesced.
+
+```
+OK: 60 KB allocation succeeded after all frees
+Total failures: 0
+```
 
 ## Limitations
 
-- The heap is fixed at 64 KB
-- The search is slow on big heaps since it checks every block
-- It doesn't ask the OS for more memory
+- The heap is fixed at 64 KB and does not grow.
+- First-fit scans the full heap on every call, so performance degrades with many blocks.
+- Coalescing runs a full pass on every free instead of merging only with neighbors.
+- Memory is not requested from the operating system.
 
-## What I learned
+## Learning outcomes
 
-- How `free()` knows a block's size without a separate list
-- Why alignment matters
-- How fragmentation builds up, and how merging fixes it
-- Tracking down a crash that happened because a block never got split
-
-## Notes
-
-I built this with some AI help while learning. I wrote the tests, worked through the bugs, and went through each part of the code so I could explain it.
+- How `free()` determines a block's size without a separate bookkeeping structure
+- Why alignment is required for correct and efficient memory access
+- How fragmentation develops and how coalescing mitigates it
+- Diagnosing a defect caused by a block that was never split
