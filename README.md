@@ -2,8 +2,6 @@
 
 A dynamic memory allocator written in C from scratch. It provides `my_malloc` and `my_free` over a fixed 64 KB heap, with first-fit allocation, block splitting, coalescing of adjacent free blocks, and 8-byte alignment.
 
-![Stress test output](images/stress-test.png)
-
 ## Overview
 
 Each block in the heap begins with a header that records the payload size and a free flag. Blocks are stored back to back, so the allocator can traverse the heap by advancing past each header and its payload.
