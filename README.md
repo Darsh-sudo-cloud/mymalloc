@@ -2,7 +2,9 @@
 
 A dynamic memory allocator written in C from scratch. It provides `my_malloc` and `my_free` over a fixed 64 KB heap, with first-fit allocation, block splitting, coalescing of adjacent free blocks, and 8-byte alignment.
 
+## Access the link below for trial
 
+https://darsh-sudo-cloud.github.io/mymalloc/
 
 ## Overview
 
