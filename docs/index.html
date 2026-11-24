@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>mymalloc demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #111; color: #eee; margin: 2rem; }
+    h1 { margin-top: 0; }
+    .row { display: flex; gap: 0.5rem; align-items: center; margin: 0.5rem 0; flex-wrap: wrap; }
+    input { background: #222; color: #eee; border: 1px solid #444; border-radius: 4px; padding: 0.4rem; width: 8rem; }
+    button { background: #2f6fed; color: white; border: none; border-radius: 4px; padding: 0.45rem 0.9rem; cursor: pointer; }
+    button:hover { background: #4a86ff; }
+    #heap { display: flex; width: 100%; height: 80px; border: 1px solid #555; margin: 1rem 0; }
+    .block { display: flex; align-items: center; justify-content: center; font-size: 12px; overflow: hidden; border-right: 1px solid #111; }
+    .free { background: #2d4a2d; }
+    .used { background: #7a3b3b; }
+    #status { color: #aaa; min-height: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>mymalloc demo</h1>
+  <p>A JavaScript port of the C allocator. Each bar is a block on a 64 KB heap. Green is free, red is allocated.</p>
+
+  <div class="row">
+    <input id="size" type="number" min="1" placeholder="bytes">
+    <button id="malloc">my_malloc</button>
+    <input id="id" type="number" min="1" placeholder="block id">
+    <button id="free">my_free</button>
+    <button id="reset">Reset heap</button>
+  </div>
+
+  <div id="heap"></div>
+  <p id="status"></p>
+
+  <script>
+    const HEAP_SIZE = 64 * 1024;
+    const HEADER = 8;
+    let blocks = [];
+    let nextId = 1;
+
+    function reset() {
+      blocks = [{ size: HEAP_SIZE, free: true, id: null }];
+      nextId = 1;
+      render("Heap reset.");
+    }
+
+    function align8(n) { return (n + 7) & ~7; }
+
+    function myMalloc(n) {
+      const total = align8(n) + HEADER;
+      for (let i = 0; i < blocks.length; i++) {
+        const b = blocks[i];
+        if (!b.free || b.size < total) continue;
+        // Split only if the leftover can hold a header and a small payload
+        if (b.size - total >= HEADER + 8) {
+          blocks.splice(i + 1, 0, { size: b.size - total, free: true, id: null });
+          b.size = total;
+        }
+        b.free = false;
+        b.id = nextId++;
+        return b.id;
+      }
+      return null;
+    }
+
+    function myFree(id) {
+      const i = blocks.findIndex(b => b.id === id);
+      if (i < 0) return false;
+      blocks[i].free = true;
+      blocks[i].id = null;
+      // Merge with the next block if it is free
+      if (blocks[i + 1] && blocks[i + 1].free) {
+        blocks[i].size += blocks[i + 1].size;
+        blocks.splice(i + 1, 1);
+      }
+      // Merge with the previous block if it is free
+      if (i > 0 && blocks[i - 1].free) {
+        blocks[i - 1].size += blocks[i].size;
+        blocks.splice(i, 1);
+      }
+      return true;
+    }
+
+    function render(message) {
+      const heap = document.getElementById("heap");
+      heap.innerHTML = "";
+      blocks.forEach(b => {
+        const d = document.createElement("div");
+        d.className = "block " + (b.free ? "free" : "used");
+        d.style.flex = b.size;
+        d.textContent = b.free ? `free ${b.size}` : `#${b.id} (${b.size})`;
+        heap.appendChild(d);
+      });
+      document.getElementById("status").textContent = message || "";
+    }
+
+    document.getElementById("malloc").onclick = () => {
+      const n = Number(document.getElementById("size").value);
+      if (!n || n < 1) return render("Enter a size in bytes.");
+      const id = myMalloc(n);
+      render(id ? `my_malloc(${n}) returned block #${id}.` : `No free block fits ${n} bytes.`);
+    };
+
+    document.getElementById("free").onclick = () => {
+      const id = Number(document.getElementById("id").value);
+      render(myFree(id) ? `my_free(#${id}) done. Free neighbours were merged.` : `No allocated block #${id}.`);
+    };
+
+    document.getElementById("reset").onclick = reset;
+    reset();
+  </script>
+</body>
+</html>
