@@ -21,7 +21,8 @@
       color: var(--text);
       background: linear-gradient(160deg, var(--navy) 0%, var(--black) 60%, #000 100%);
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
       padding: 2.5rem 1rem;
     }
     .card {
@@ -161,6 +162,13 @@
       background: rgba(34, 211, 238, 0.06);
       border-radius: 0 8px 8px 0;
     }
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    footer strong { color: var(--cyan); }
   </style>
 </head>
 <body>
@@ -194,6 +202,10 @@
 
     <p id="status"></p>
   </main>
+
+  <footer>
+    Made with care by <strong>Darsh Vora</strong>
+  </footer>
 
   <script>
     const HEAP_SIZE = 64 * 1024;
