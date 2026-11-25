@@ -2,35 +2,198 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>mymalloc demo</title>
   <style>
-    body { font-family: system-ui, sans-serif; background: #111; color: #eee; margin: 2rem; }
-    h1 { margin-top: 0; }
-    .row { display: flex; gap: 0.5rem; align-items: center; margin: 0.5rem 0; flex-wrap: wrap; }
-    input { background: #222; color: #eee; border: 1px solid #444; border-radius: 4px; padding: 0.4rem; width: 8rem; }
-    button { background: #2f6fed; color: white; border: none; border-radius: 4px; padding: 0.45rem 0.9rem; cursor: pointer; }
-    button:hover { background: #4a86ff; }
-    #heap { display: flex; width: 100%; height: 80px; border: 1px solid #555; margin: 1rem 0; }
-    .block { display: flex; align-items: center; justify-content: center; font-size: 12px; overflow: hidden; border-right: 1px solid #111; }
-    .free { background: #2d4a2d; }
-    .used { background: #7a3b3b; }
-    #status { color: #aaa; min-height: 1.5rem; }
+    :root {
+      --blue: #3b82f6;
+      --cyan: #22d3ee;
+      --navy: #0b1d3a;
+      --black: #05070d;
+      --text: #e6edf8;
+      --muted: #8ea3c4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(160deg, var(--navy) 0%, var(--black) 60%, #000 100%);
+      display: flex;
+      justify-content: center;
+      padding: 2.5rem 1rem;
+    }
+    .card {
+      width: 100%;
+      max-width: 960px;
+      background: rgba(12, 22, 44, 0.75);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(6px);
+    }
+    h1 {
+      margin: 0 0 0.25rem;
+      font-size: 2.2rem;
+      background: linear-gradient(90deg, var(--cyan), var(--blue));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .sub { color: var(--muted); margin: 0 0 1.5rem; line-height: 1.5; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    input {
+      background: #0a1426;
+      color: var(--text);
+      border: 1px solid #1e3358;
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+      width: 9rem;
+      font-size: 0.95rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+    }
+    button {
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      color: #04101f;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(34, 211, 238, 0.35);
+    }
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid #1e3358;
+    }
+    button.ghost:hover { color: var(--text); box-shadow: none; }
+    .legend {
+      display: flex;
+      gap: 1.25rem;
+      margin: 1.75rem 0 0.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 0.4rem;
+      vertical-align: middle;
+    }
+    #heap {
+      display: flex;
+      height: 110px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #050b18;
+      border: 1px solid #1e3358;
+      padding: 4px;
+      gap: 3px;
+    }
+    .block {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      animation: pop 0.35s ease-out;
+    }
+    .free {
+      background: repeating-linear-gradient(45deg, #13305c, #13305c 8px, #0f2549 8px, #0f2549 16px);
+      color: #7fb3ff;
+      border: 1px dashed #2c5aa0;
+    }
+    .used {
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      color: #04101f;
+      box-shadow: 0 0 14px rgba(34, 211, 238, 0.25);
+    }
+    @keyframes pop {
+      from { opacity: 0; transform: scale(0.92); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .stats {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .stat {
+      flex: 1;
+      min-width: 150px;
+      background: #0a1426;
+      border: 1px solid #1e3358;
+      border-radius: 10px;
+      padding: 0.8rem 1rem;
+    }
+    .stat span { display: block; color: var(--muted); font-size: 0.8rem; }
+    .stat strong { font-size: 1.3rem; color: var(--cyan); }
+    #status {
+      margin-top: 1.25rem;
+      min-height: 1.5rem;
+      color: var(--text);
+      padding: 0.6rem 0.9rem;
+      border-left: 3px solid var(--cyan);
+      background: rgba(34, 211, 238, 0.06);
+      border-radius: 0 8px 8px 0;
+    }
   </style>
 </head>
 <body>
-  <h1>mymalloc demo</h1>
-  <p>A JavaScript port of the C allocator. Each bar is a block on a 64 KB heap. Green is free, red is allocated.</p>
+  <main class="card">
+    <h1>mymalloc demo</h1>
+    <p class="sub">
+      A JavaScript port of the C allocator. Allocate blocks, free them, and watch the heap
+      split and merge on a 64 KB heap.
+    </p>
 
-  <div class="row">
-    <input id="size" type="number" min="1" placeholder="bytes">
-    <button id="malloc">my_malloc</button>
-    <input id="id" type="number" min="1" placeholder="block id">
-    <button id="free">my_free</button>
-    <button id="reset">Reset heap</button>
-  </div>
+    <div class="controls">
+      <input id="size" type="number" min="1" placeholder="bytes">
+      <button id="malloc">my_malloc</button>
+      <input id="id" type="number" min="1" placeholder="block id">
+      <button id="free">my_free</button>
+      <button id="reset" class="ghost">Reset heap</button>
+    </div>
 
-  <div id="heap"></div>
-  <p id="status"></p>
+    <div class="legend">
+      <span><span class="dot" style="background:#2c5aa0"></span>Free</span>
+      <span><span class="dot" style="background:linear-gradient(135deg,#3b82f6,#22d3ee)"></span>Allocated</span>
+    </div>
+
+    <div id="heap"></div>
+
+    <div class="stats">
+      <div class="stat"><span>Free blocks</span><strong id="freeCount">0</strong></div>
+      <div class="stat"><span>Allocated blocks</span><strong id="usedCount">0</strong></div>
+      <div class="stat"><span>Free bytes</span><strong id="freeBytes">0</strong></div>
+    </div>
+
+    <p id="status"></p>
+  </main>
 
   <script>
     const HEAP_SIZE = 64 * 1024;
@@ -41,7 +204,7 @@
     function reset() {
       blocks = [{ size: HEAP_SIZE, free: true, id: null }];
       nextId = 1;
-      render("Heap reset.");
+      render("Heap reset. One large free block.");
     }
 
     function align8(n) { return (n + 7) & ~7; }
@@ -84,13 +247,22 @@
     function render(message) {
       const heap = document.getElementById("heap");
       heap.innerHTML = "";
+      let freeCount = 0, usedCount = 0, freeBytes = 0;
+
       blocks.forEach(b => {
         const d = document.createElement("div");
         d.className = "block " + (b.free ? "free" : "used");
         d.style.flex = b.size;
-        d.textContent = b.free ? `free ${b.size}` : `#${b.id} (${b.size})`;
+        d.textContent = b.free ? `free ${b.size}` : `#${b.id} · ${b.size} B`;
+        d.title = b.free ? `Free block, ${b.size} bytes` : `Block #${b.id}, ${b.size} bytes`;
         heap.appendChild(d);
+
+        if (b.free) { freeCount++; freeBytes += b.size; } else { usedCount++; }
       });
+
+      document.getElementById("freeCount").textContent = freeCount;
+      document.getElementById("usedCount").textContent = usedCount;
+      document.getElementById("freeBytes").textContent = freeBytes.toLocaleString();
       document.getElementById("status").textContent = message || "";
     }
 
